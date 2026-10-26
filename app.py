@@ -12,7 +12,6 @@ st.set_page_config(
 )
 
 LANGUAGES = ["de", "en", "es", "fr", "it", "nl", "pl", "pt", "uk"]
-# Виправлено: animal.txt змінено на animals.txt
 CATEGORIES = ["animals.txt", "food.txt", "nature.txt", "travel.txt"]
 LEVEL_SIZE = 10  # 10 слів на рівень
 
@@ -124,6 +123,24 @@ if "editing_word_idx" not in st.session_state:
 
 st.session_state.user_decisions = load_all_decisions_from_db()
 
+# --- CSS ДЛЯ ПРИМУСОВОГО ВИШИКУВАННЯ В ОДИН РЯДОК НА МОБІЛЬНИХ ---
+st.markdown("""
+    <style>
+    /* Робимо так, щоб колонки у рядку зі словом не переносились на мобільних */
+    [data-testid="column"] {
+        flex: 1 1 0% !important;
+        min-width: 0 !important;
+    }
+    .word-row {
+        background-color: #ffffff;
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
+        margin-bottom: 8px;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 
 # ==========================================
 # КРОК 1: ВИБІР МОВИ
@@ -155,10 +172,10 @@ elif st.session_state.step == "select_cat":
 
   cols = st.columns(2)
   for i, cat in enumerate(CATEGORIES):
-    cat_words_foreign = dict_data[lang][cat]
+    cat_words_foreign = dict_data.get(lang, {}).get(cat, [cat])
     cat_name_foreign = cat_words_foreign[0] if cat_words_foreign else cat
 
-    cat_words_uk = dict_data["uk"][cat]
+    cat_words_uk = dict_data.get("uk", {}).get(cat, [cat])
     cat_name_uk = cat_words_uk[0] if cat_words_uk else cat
 
     with cols[i % 2]:
@@ -175,7 +192,7 @@ elif st.session_state.step == "select_levels":
   lang = st.session_state.selected_lang
   cat = st.session_state.selected_cat
 
-  cat_words = dict_data[lang][cat][1:]
+  cat_words = dict_data.get(lang, {}).get(cat, [cat])[1:]
   total_levels = max(1, (len(cat_words) + LEVEL_SIZE - 1) // LEVEL_SIZE)
 
   st.title(
@@ -227,14 +244,16 @@ elif st.session_state.step == "gameplay":
   cat = st.session_state.selected_cat
   lvl = st.session_state.selected_level
 
-  full_list = dict_data[lang][cat]
+  full_list = dict_data.get(lang, {}).get(cat, [cat])
   cat_name_foreign = full_list[0] if full_list else ""
-  cat_name_uk = dict_data["uk"][cat][0] if dict_data["uk"][cat] else ""
-  words_list = full_list[1:]
+
+  uk_list = dict_data.get("uk", {}).get(cat, [cat])
+  cat_name_uk = uk_list[0] if uk_list else ""
+
+  words_list = full_list[1:] if len(full_list) > 1 else []
 
   total_levels = max(1, (len(words_list) + LEVEL_SIZE - 1) // LEVEL_SIZE)
 
-  # Кнопка повернення до сітки рівнів
   if st.button("⬅ До списку рівнів"):
     st.session_state.selected_level = None
     st.session_state.step = "select_levels"
@@ -276,9 +295,11 @@ elif st.session_state.step == "gameplay":
     current_word = stored_data["word"]
     status = stored_data["status"]
 
-    col_no, col_word, col_yes = st.columns([1, 6, 1])
+    # Чіткий порядок колонок в один рядок: [Ні] [Слово + Переклад + Картинкa + Олівець] [Так]
+    col_no, col_word, col_yes = st.columns([1, 5, 1])
 
     with col_no:
+      # Червона кнопка "Ні"
       btn_no_style = "❌" if status == "no" else "➖ Ні"
       if st.button(btn_no_style, key=f"no_{global_idx}", use_container_width=True):
         save_decision_to_db(lang, cat, global_idx, current_word, "no")
@@ -295,15 +316,17 @@ elif st.session_state.step == "gameplay":
           f"https://www.google.com/search?q={urllib.parse.quote(current_word)}&tbm=isch"
       )
 
-      c_w1, c_w2 = st.columns([5, 1])
-      with c_w1:
+      # Внутрішні колонки для слова та кнопки редагування в одному рядку
+      cw1, cw2 = st.columns([5, 1])
+      with cw1:
         st.markdown(
-            f'<div style="padding: 8px 0;"><a href="{google_url}" target="_blank"'
-            f' style="font-size: 20px; font-weight: bold; text-decoration: none;'
-            f' color: #0066cc;">{display_text} 🔍</a></div>',
+            f'<div style="padding-top: 6px;"><a href="{google_url}"'
+            ' target="_blank" style="font-size: 18px; font-weight: bold;'
+            f' text-decoration: none; color: #0066cc;">{display_text}'
+            " 🔍</a></div>",
             unsafe_allow_html=True,
         )
-      with c_w2:
+      with cw2:
         if st.button("✏️", key=f"edit_btn_{global_idx}", help="Редагувати"):
           st.session_state.editing_word_idx = global_idx
           st.rerun()
@@ -323,8 +346,11 @@ elif st.session_state.step == "gameplay":
             st.rerun()
 
     with col_yes:
+      # Зелена кнопка "Так"
       btn_yes_style = "✔" if status == "yes" else "➕ Так"
-      if st.button(btn_yes_style, key=f"yes_{global_idx}", use_container_width=True):
+      if st.button(
+          btn_yes_style, key=f"yes_{global_idx}", use_container_width=True
+      ):
         save_decision_to_db(lang, cat, global_idx, current_word, "yes")
         st.rerun()
 
