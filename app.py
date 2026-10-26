@@ -12,7 +12,8 @@ st.set_page_config(
 )
 
 LANGUAGES = ["de", "en", "es", "fr", "it", "nl", "pl", "pt", "uk"]
-CATEGORIES = ["animal.txt", "food.txt", "nature.txt", "travel.txt"]
+# Виправлено: animal.txt змінено на animals.txt
+CATEGORIES = ["animals.txt", "food.txt", "nature.txt", "travel.txt"]
 LEVEL_SIZE = 10  # 10 слів на рівень
 
 DB_NAME = "game_progress.db"
@@ -69,7 +70,6 @@ def load_all_decisions_from_db():
   return decisions
 
 
-# Ініціалізуємо БД при запуску
 init_db()
 
 
@@ -122,7 +122,6 @@ if "selected_level" not in st.session_state:
 if "editing_word_idx" not in st.session_state:
   st.session_state.editing_word_idx = None
 
-# Завантажуємо прогрес із серверної бази даних у сесію
 st.session_state.user_decisions = load_all_decisions_from_db()
 
 
@@ -228,15 +227,18 @@ elif st.session_state.step == "gameplay":
   cat = st.session_state.selected_cat
   lvl = st.session_state.selected_level
 
-  if st.button("⬅ Назад до вибору рівнів"):
-    st.session_state.selected_level = None
-    st.session_state.step = "select_levels"
-    st.rerun()
-
   full_list = dict_data[lang][cat]
   cat_name_foreign = full_list[0] if full_list else ""
   cat_name_uk = dict_data["uk"][cat][0] if dict_data["uk"][cat] else ""
   words_list = full_list[1:]
+
+  total_levels = max(1, (len(words_list) + LEVEL_SIZE - 1) // LEVEL_SIZE)
+
+  # Кнопка повернення до сітки рівнів
+  if st.button("⬅ До списку рівнів"):
+    st.session_state.selected_level = None
+    st.session_state.step = "select_levels"
+    st.rerun()
 
   start_idx = (lvl - 1) * LEVEL_SIZE
   end_idx = min(start_idx + LEVEL_SIZE, len(words_list))
@@ -246,7 +248,7 @@ elif st.session_state.step == "gameplay":
   with col_head1:
     st.markdown(
         f"<h2>{cat_name_foreign} &nbsp;|&nbsp; 🇺🇦 <i>{cat_name_uk}</i>"
-        f" &nbsp;—&nbsp; Рівень {lvl}</h2>",
+        f" &nbsp;—&nbsp; Рівень {lvl} з {total_levels}</h2>",
         unsafe_allow_html=True,
     )
   with col_head2:
@@ -324,6 +326,25 @@ elif st.session_state.step == "gameplay":
       btn_yes_style = "✔" if status == "yes" else "➕ Так"
       if st.button(btn_yes_style, key=f"yes_{global_idx}", use_container_width=True):
         save_decision_to_db(lang, cat, global_idx, current_word, "yes")
+        st.rerun()
+
+  st.markdown("---")
+
+  # --- КНОПКИ ШВИДКОГО ПЕРЕКЛЮЧЕННЯ РІВНІВ ЗНИЗУ ---
+  col_prev_lvl, col_next_lvl = st.columns(2)
+  with col_prev_lvl:
+    if lvl > 1:
+      if st.button(
+          "⬅ Попередній рівень", use_container_width=True, type="secondary"
+      ):
+        st.session_state.selected_level = lvl - 1
+        st.rerun()
+  with col_next_lvl:
+    if lvl < total_levels:
+      if st.button(
+          "Наступний рівень ➡", use_container_width=True, type="primary"
+      ):
+        st.session_state.selected_level = lvl + 1
         st.rerun()
 
   st.markdown("---")
