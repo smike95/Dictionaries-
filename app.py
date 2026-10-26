@@ -1,7 +1,7 @@
 import os
 import sqlite3
 import urllib.parse
-from deep_translator import GoogleTranslator
+import requests
 import streamlit as st
 
 # Налаштування сторінки
@@ -90,15 +90,19 @@ def load_all_decisions_from_db():
 init_db()
 
 
-# Прямий переклад без кешу, щоб гарантовано оновлювати стовпчик
+# Надійний переклад через публічний GTX API Google
+@st.cache_data
 def translate_to_uk(word, src_lang):
-  if src_lang == "uk" or not word:
+  if not word or src_lang == "uk":
     return word
   try:
-    translated = GoogleTranslator(source=src_lang, target="uk").translate(word)
-    return translated if translated else word
+    url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl={src_lang}&tl=uk&dt=t&q={urllib.parse.quote(word)}"
+    res = requests.get(url, timeout=3).json()
+    if res and isinstance(res, list) and len(res) > 0 and res[0]:
+      return res[0][0][0]
   except Exception:
-    return word
+    pass
+  return word
 
 
 @st.cache_data
@@ -282,7 +286,6 @@ elif st.session_state.step == "gameplay":
 
   total_levels = max(1, (len(words_list) + LEVEL_SIZE - 1) // LEVEL_SIZE)
 
-  # Верхня панель навігації назад до рівнів
   col_b1, col_b2 = st.columns([1, 8])
   with col_b1:
     if st.button("❮ Рівні", use_container_width=True):
@@ -446,54 +449,3 @@ elif st.session_state.step == "gameplay":
   col_nav1, col_nav_sugg, col_nav2 = st.columns([1, 1, 1])
 
   with col_nav1:
-    if lvl > 1:
-      if st.button("❮ Попередній рівень", use_container_width=True):
-        st.session_state.selected_level = lvl - 1
-        st.rerun()
-
-  with col_nav_sugg:
-    if st.button("💡 Запропонувати слова на заміну", use_container_width=True):
-      suggestions = []
-      current_set = {w.lower() for w in words_list}
-      for l_key in LANGUAGES:
-        l_words = dict_data.get(l_key, {}).get(cat, [])[1:]
-        for lw in l_words:
-          translated_s = translate_to_uk(lw, l_key) if lang == "uk" else lw
-          if translated_s.lower() not in current_set:
-            suggestions.append(translated_s)
-
-      if suggestions:
-        st.info(
-            "💡 Рекомендовані слова: " + ", ".join(suggestions[:5]) + "..."
-        )
-      else:
-        st.info("Усі можливі слова вже задіяні у цій категорії!")
-
-  with col_nav2:
-    if lvl < total_levels:
-      if st.button(
-          "Наступний рівень ❯", use_container_width=True, type="primary"
-      ):
-        st.session_state.selected_level = lvl + 1
-        st.rerun()
-
-  st.markdown("---")
-
-  # Експорт оновленого словника
-  if st.button(
-      "📦 Експортувати оновлений словник категорії", use_container_width=True
-  ):
-    final_words_export = [cat_name_foreign]
-    for idx, w_item in enumerate(words_list):
-      decision = cat_decisions.get(idx, {"word": w_item, "status": "yes"})
-      if decision["status"] != "no":
-        final_words_export.append(decision["word"])
-
-    file_content = "\n".join(final_words_export)
-    st.download_button(
-        label=f"💾 Завантажити {cat} ({lang.upper()})",
-        data=file_content,
-        file_name=f"updated_{lang}_{cat}",
-        mime="text/plain",
-        use_container_width=True,
-    )
