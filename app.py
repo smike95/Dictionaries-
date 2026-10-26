@@ -90,11 +90,14 @@ def load_all_decisions_from_db():
 init_db()
 
 
+# Кешований переклад, щоб не робити зайвих запитів
+@st.cache_data
 def translate_to_uk(word, src_lang):
   if src_lang == "uk" or not word:
     return word
   try:
-    return GoogleTranslator(source=src_lang, target="uk").translate(word)
+    translated = GoogleTranslator(source=src_lang, target="uk").translate(word)
+    return translated if translated else word
   except Exception:
     return word
 
@@ -127,7 +130,7 @@ dict_data = load_all_dicts()
 
 # --- ІНІЦІАЛІЗАЦІЯ СТАНУ СЕСІЇ ---
 if "step" not in st.session_state:
-  st.session_state.step = "select_lang"  # select_lang -> select_cat -> select_levels -> gameplay
+  st.session_state.step = "select_lang"
 if "selected_lang" not in st.session_state:
   st.session_state.selected_lang = None
 if "selected_cat" not in st.session_state:
@@ -147,12 +150,6 @@ st.markdown("""
         font-weight: bold;
         text-align: center;
         margin-bottom: 20px;
-    }
-    .level-card {
-        background-color: #f8f9fa;
-        border-radius: 10px;
-        padding: 10px;
-        text-align: center;
     }
     </style>
 """, unsafe_allow_html=True)
