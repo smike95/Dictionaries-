@@ -449,3 +449,53 @@ elif st.session_state.step == "gameplay":
   col_nav1, col_nav_sugg, col_nav2 = st.columns([1, 1, 1])
 
   with col_nav1:
+    if lvl > 1:
+      if st.button("❮ Попередній рівень", use_container_width=True):
+        st.session_state.selected_level = lvl - 1
+        st.rerun()
+
+  with col_nav_sugg:
+    if st.button("💡 Запропонувати слова на заміну", use_container_width=True):
+      suggestions = []
+      current_set = {w.lower() for w in words_list}
+      uk_words_list = dict_data.get("uk", {}).get(cat, [])[1:]
+      for lw in uk_words_list:
+        translated_s = translate_to_uk(lw, "uk") if lang != "uk" else lw
+        if translated_s.lower() not in current_set:
+          suggestions.append(translated_s)
+
+      if suggestions:
+        st.info(
+            "💡 Рекомендовані слова: " + ", ".join(suggestions[:5]) + "..."
+        )
+      else:
+        st.info("Усі можливі слова вже задіяні у цій категорії!")
+
+  with col_nav2:
+    if lvl < total_levels:
+      if st.button(
+          "Наступний рівень ❯", use_container_width=True, type="primary"
+      ):
+        st.session_state.selected_level = lvl + 1
+        st.rerun()
+
+  st.markdown("---")
+
+  # Експорт оновленого словника
+  if st.button(
+      "📦 Експортувати оновлений словник категорії", use_container_width=True
+  ):
+    final_words_export = [cat_name_foreign]
+    for idx, w_item in enumerate(words_list):
+      decision = cat_decisions.get(idx, {"word": w_item, "status": "yes"})
+      if decision["status"] != "no":
+        final_words_export.append(decision["word"])
+
+    file_content = "\n".join(final_words_export)
+    st.download_button(
+        label=f"💾 Завантажити {cat} ({lang.upper()})",
+        data=file_content,
+        file_name=f"updated_{lang}_{cat}",
+        mime="text/plain",
+        use_container_width=True,
+    )
