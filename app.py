@@ -140,8 +140,8 @@ if "selected_cat" not in st.session_state:
   st.session_state.selected_cat = None
 if "selected_level" not in st.session_state:
   st.session_state.selected_level = None
-if "editing_word_idx" not in st.session_state:
-  st.session_state.editing_word_idx = None
+if "show_suggestions" not in st.session_state:
+  st.session_state.show_suggestions = False
 
 st.session_state.user_decisions = load_all_decisions_from_db()
 
@@ -153,6 +153,23 @@ st.markdown("""
         font-weight: bold;
         text-align: center;
         margin-bottom: 20px;
+    }
+    @media (max-width: 9999px) {
+        [data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+        }
+        [data-testid="column"] {
+            flex: 1 1 auto !important;
+            min-width: unset !important;
+        }
+    }
+    div.stButton > button {
+        width: 100% !important;
+        border-radius: 6px !important;
+        padding: 4px 6px !important;
+        font-size: 14px !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -290,6 +307,8 @@ elif st.session_state.step == "gameplay":
   with col_b1:
     if st.button("❮ Рівні", use_container_width=True):
       st.session_state.selected_level = None
+      st.session_state.selected_level = None
+      st.session_state.show_suggestions = False
       st.session_state.step = "select_levels"
       st.rerun()
   with col_b2:
@@ -333,6 +352,17 @@ elif st.session_state.step == "gameplay":
     current_word = stored_data["word"]
     status = stored_data["status"]
 
+    bg_color = "transparent"
+    text_decoration = "none"
+    text_color = "inherit"
+
+    if status == "yes":
+      bg_color = "#e6f4ea"
+    elif status == "no":
+      bg_color = "#fce8e6"
+      text_decoration = "line-through"
+      text_color = "#888888"
+
     c_btn_no, c_word, c_tr, c_img, c_btn_yes = st.columns([1, 4, 3, 1.5, 1.5])
 
     with c_btn_no:
@@ -346,8 +376,10 @@ elif st.session_state.step == "gameplay":
 
     with c_word:
       st.markdown(
-          f"<div style='padding-top: 6px; font-weight: 500;'>{i+1}. "
-          f"<b>{current_word}</b></div>",
+          f"<div style='background-color: {bg_color}; padding: 6px 8px;"
+          " border-radius: 6px; font-weight: 500; text-decoration:"
+          f" {text_decoration}; color: {text_color};'>{i+1}."
+          f" <b>{current_word}</b></div>",
           unsafe_allow_html=True,
       )
 
@@ -360,7 +392,8 @@ elif st.session_state.step == "gameplay":
       else:
         uk_tr = translate_to_uk(current_word, lang)
         st.markdown(
-            f"<div style='padding-top: 6px; color: #333;'>{uk_tr}</div>",
+            f"<div style='padding-top: 6px; color: {text_color}; text-decoration:"
+            f" {text_decoration};'>{uk_tr}</div>",
             unsafe_allow_html=True,
         )
 
@@ -404,8 +437,10 @@ elif st.session_state.step == "gameplay":
   with col_add_btn2:
     add_clicked = st.button("➕ Додати", use_container_width=True, type="primary")
 
-  if add_clicked and new_word_input.strip():
-    clean_new_word = new_word_input.strip().lower()
+
+  # Функція для додавання/заміни слова
+  def process_new_word(word_to_add):
+    clean_new_word = word_to_add.strip().lower()
     all_existing_words = [
         cat_decisions.get(idx, {"word": w})["word"].lower()
         for idx, w in enumerate(words_list)
@@ -427,21 +462,21 @@ elif st.session_state.step == "gameplay":
           break
 
       if target_idx is not None:
-        save_decision_to_db(
-            lang, cat, target_idx, new_word_input.strip(), "yes"
-        )
+        save_decision_to_db(lang, cat, target_idx, word_to_add.strip(), "yes")
         st.success("✅ Слово успішно замість відхиленого на цьому рівні!")
         st.rerun()
       else:
-        words_list.append(new_word_input.strip())
+        words_list.append(word_to_add.strip())
         new_global_idx = len(words_list) - 1
         save_decision_to_db(
-            lang, cat, new_global_idx, new_word_input.strip(), "yes"
+            lang, cat, new_global_idx, word_to_add.strip(), "yes"
         )
-        st.success(
-            "✅ Всі слова на рівні прийняті! Нове слово додано в кінець словника."
-        )
+        st.success("✅ Нове слово додано в кінець словника.")
         st.rerun()
+
+
+  if add_clicked and new_word_input.strip():
+    process_new_word(new_word_input.strip())
 
   st.markdown("<br>", unsafe_allow_html=True)
 
@@ -452,24 +487,13 @@ elif st.session_state.step == "gameplay":
     if lvl > 1:
       if st.button("❮ Попередній рівень", use_container_width=True):
         st.session_state.selected_level = lvl - 1
+        st.session_state.show_suggestions = False
         st.rerun()
 
   with col_nav_sugg:
     if st.button("💡 Запропонувати слова на заміну", use_container_width=True):
-      suggestions = []
-      current_set = {w.lower() for w in words_list}
-      uk_words_list = dict_data.get("uk", {}).get(cat, [])[1:]
-      for lw in uk_words_list:
-        translated_s = translate_to_uk(lw, "uk") if lang != "uk" else lw
-        if translated_s.lower() not in current_set:
-          suggestions.append(translated_s)
-
-      if suggestions:
-        st.info(
-            "💡 Рекомендовані слова: " + ", ".join(suggestions[:5]) + "..."
-        )
-      else:
-        st.info("Усі можливі слова вже задіяні у цій категорії!")
+      st.session_state.show_suggestions = not st.session_state.show_suggestions
+      st.rerun()
 
   with col_nav2:
     if lvl < total_levels:
@@ -477,7 +501,31 @@ elif st.session_state.step == "gameplay":
           "Наступний рівень ❯", use_container_width=True, type="primary"
       ):
         st.session_state.selected_level = lvl + 1
+        st.session_state.show_suggestions = False
         st.rerun()
+
+  # Вивід інтерактивних пропозицій, якщо кнопка активована
+  if st.session_state.show_suggestions:
+    st.markdown("---")
+    st.markdown("##### 💡 Натисніть на слово, щоб підставити його на заміну:")
+
+    # Збираємо унікальні слова з інших рівнів цієї ж мови
+    current_set = {w.lower() for w in words_list}
+    available_suggestions = []
+    full_lang_words = dict_data.get(lang, {}).get(cat, [])[1:]
+    for lw in full_lang_words:
+      if lw.lower() not in current_set:
+        available_suggestions.append(lw)
+
+    if available_suggestions:
+      # Виводимо пропозиції у вигляді сітки клікабельних кнопок
+      sugg_cols = st.columns(3)
+      for idx, sug_word in enumerate(available_suggestions[:9]):
+        with sugg_cols[idx % 3]:
+          if st.button(f"✨ {sug_word}", key=f"sug_btn_{idx}", use_container_width=True):
+            process_new_word(sug_word)
+    else:
+      st.info("Усі можливі слова з інших рівнів вже задіяні у цій категорії!")
 
   st.markdown("---")
 
