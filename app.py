@@ -90,8 +90,7 @@ def load_all_decisions_from_db():
 init_db()
 
 
-# Кешований переклад, щоб не робити зайвих запитів
-@st.cache_data
+# Прямий переклад без кешу, щоб гарантовано оновлювати стовпчик
 def translate_to_uk(word, src_lang):
   if src_lang == "uk" or not word:
     return word
