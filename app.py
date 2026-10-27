@@ -181,7 +181,7 @@ elif st.session_state.step == "select_cat":
 
     with cols[i % 2]:
       btn_label = f"{emoji_label}\n{cat_name_foreign}\n({cat_name_uk})"
-      if st.button(btn_label, use_container_width=True, key=f"c_{cat}„):
+      if st.button(btn_label, use_container_width=True, key=f"c_{cat}"):
         st.session_state.selected_cat = cat
         st.session_state.step = "select_levels"
         st.rerun()
