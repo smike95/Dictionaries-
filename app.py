@@ -36,7 +36,7 @@ LEVEL_SIZE = 10  # 10 слів на рівень
 PROGRESS_FILE = "shared_progress.json"
 
 
-# --- СПІЛЬНИЙ ПРОГРЕС ДЛЯ СИНХРОНІЗАЦІЇ З РІЗНИХ ПРИСТРОЇВ ---
+# --- РОБОТА З ПРОГРЕСОМ ---
 def load_shared_decisions():
   if os.path.exists(PROGRESS_FILE):
     try:
@@ -106,9 +106,11 @@ if "selected_cat" not in st.session_state:
 if "selected_level" not in st.session_state:
   st.session_state.selected_level = None
 
-st.session_state.user_decisions = load_shared_decisions()
+# Завантажуємо збережений прогрес
+if "user_decisions" not in st.session_state:
+  st.session_state.user_decisions = load_shared_decisions()
 
-# --- CSS СТИЛІ ДЛЯ СУПЕР-ЧІТКОГО РЯДКА ---
+# --- CSS СТИЛІ ДЛЯ АКУРАТНИХ КНОПОК ТА ФОНУ ---
 st.markdown("""
     <style>
     .main-title {
@@ -116,16 +118,6 @@ st.markdown("""
         font-weight: bold;
         text-align: center;
         margin-bottom: 20px;
-    }
-    /* Обгортка одного слова в монолітний рядок без розбиття */
-    .word-row-container {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 8px 12px;
-        border-radius: 8px;
-        margin-bottom: 8px;
-        border: 1px solid #e0e0e0;
     }
     div.stButton > button {
         width: 100% !important;
@@ -216,6 +208,9 @@ elif st.session_state.step == "select_levels":
 
   st.markdown("---")
 
+  # Оновлюємо дані з файлу перед виведенням рівня
+  st.session_state.user_decisions = load_shared_decisions()
+
   cat_words = dict_data.get(lang, {}).get(cat, [cat])[1:]
   total_levels = max(1, (len(cat_words) + LEVEL_SIZE - 1) // LEVEL_SIZE)
 
@@ -232,8 +227,8 @@ elif st.session_state.step == "select_levels":
     passed_count = sum(
         1
         for idx in range(start_idx, end_idx)
-        if idx in decisions_dict
-        and decisions_dict[str(idx)]["status"] == "yes"
+        if str(idx) in decisions_dict
+        and decisions_dict[str(idx)].get("status") == "yes"
     )
 
     badge = (
@@ -255,6 +250,9 @@ elif st.session_state.step == "gameplay":
   lang = st.session_state.selected_lang
   cat = st.session_state.selected_cat
   lvl = st.session_state.selected_level
+
+  # Завантажуємо актуальний прогрес із файлу
+  st.session_state.user_decisions = load_shared_decisions()
 
   full_list = dict_data.get(lang, {}).get(cat, [cat])
   cat_name_foreign = full_list[0] if full_list else ""
@@ -291,17 +289,6 @@ elif st.session_state.step == "gameplay":
 
   cat_decisions = st.session_state.user_decisions[lang][cat]
 
-  # Шапка таблиці
-  col_t1, col_t2, col_t3 = st.columns([6, 3, 3])
-  with col_t1:
-    st.markdown("**Слово**")
-  with col_t2:
-    st.markdown("**Переклад (укр.)**")
-  with col_t3:
-    st.markdown("**Зображення Google**")
-
-  st.markdown("<hr style='margin: 5px 0 15px 0;'>", unsafe_allow_html=True)
-
 
   def update_decision(g_idx, word_val, stat):
     if lang not in st.session_state.user_decisions:
@@ -315,7 +302,7 @@ elif st.session_state.step == "gameplay":
     save_shared_decisions(st.session_state.user_decisions)
 
 
-  # Рядки слів у вигляді цілісних контейнерів
+  # Виводимо слова у вигляді зручних рядків
   for i, original_word in enumerate(level_words):
     global_idx = start_idx + i
     stored_data = cat_decisions.get(
@@ -324,14 +311,10 @@ elif st.session_state.step == "gameplay":
     current_word = stored_data["word"]
     status = stored_data["status"]
 
-    bg_color = "transparent"
+    # Визначаємо стиль оформлення
     text_decoration = "none"
     text_color = "inherit"
-
-    if status == "yes":
-      bg_color = "#e6f4ea"  # Зелений фон для прийнятого
-    elif status == "no":
-      bg_color = "#fce8e6"  # Червоний фон для відхиленого
+    if status == "no":
       text_decoration = "line-through"
       text_color = "#888888"
 
@@ -340,48 +323,48 @@ elif st.session_state.step == "gameplay":
     )
     google_url = f"https://www.google.com/search?q={urllib.parse.quote(current_word)}&tbm=isch"
 
-    # Використовуємо кастомний HTML-контейнер для збереження єдиного рядка на будь-якому екрані
-    st.markdown(
-        f"""
-        <div class="word-row-container" style="background-color: {bg_color};">
-            <div style="flex: 1; text-align: center;">
-        """,
-        unsafe_allow_html=True,
-    )
+    # Використовуємо container з кольором фону залежно від статусу
+    box_color = "#e6f4ea" if status == "yes" else ("#fce8e6" if status == "no" else "#f8f9fa")
 
-    c_btn_no, c_word, c_tr, c_img, c_btn_yes = st.columns([1, 4, 3, 1.5, 1.5])
-
-    with c_btn_no:
-      is_no = status == "no"
-      if st.button("❌" if is_no else "➖", key=f"no_{global_idx}", use_container_width=True):
-        update_decision(global_idx, current_word, "no")
-        st.rerun()
-
-    with c_word:
+    with st.container():
       st.markdown(
-          f"<div style='font-weight: 500; text-decoration: {text_decoration}; color: {text_color};'>{i+1}. <b>{current_word}</b></div>",
+          f"<div style='background-color: {box_color}; padding: 8px 12px; border-radius: 8px; margin-bottom: 6px;'>",
           unsafe_allow_html=True,
       )
 
-    with c_tr:
-      st.markdown(
-          f"<div style='color: {text_color}; text-decoration: {text_decoration};'>{uk_tr}</div>",
-          unsafe_allow_html=True,
-      )
+      c_btn_no, c_word, c_tr, c_img, c_btn_yes = st.columns([1, 4, 3, 1, 1])
 
-    with c_img:
-      st.markdown(
-          f'<a href="{google_url}" target="_blank" style="text-decoration: none; font-size: 18px;" title="Google Картинки">🖼️</a>',
-          unsafe_allow_html=True,
-      )
+      with c_btn_no:
+        is_no = status == "no"
+        if st.button("❌" if is_no else "➖", key=f"no_{global_idx}", use_container_width=True):
+          update_decision(global_idx, current_word, "no")
+          st.rerun()
 
-    with c_btn_yes:
-      is_yes = status == "yes" or status is None
-      if st.button("✔" if is_yes else "➕", key=f"yes_{global_idx}", use_container_width=True):
-        update_decision(global_idx, current_word, "yes")
-        st.rerun()
+      with c_word:
+        st.markdown(
+            f"<div style='padding-top: 6px; font-weight: 500; text-decoration: {text_decoration}; color: {text_color};'>{i+1}. <b>{current_word}</b></div>",
+            unsafe_allow_html=True,
+        )
 
-    st.markdown("</div></div>", unsafe_allow_html=True)
+      with c_tr:
+        st.markdown(
+            f"<div style='padding-top: 6px; color: {text_color}; text-decoration: {text_decoration};'>{uk_tr}</div>",
+            unsafe_allow_html=True,
+        )
+
+      with c_img:
+        st.markdown(
+            f'<div style="padding-top: 6px;"><a href="{google_url}" target="_blank" style="text-decoration: none; font-size: 18px;" title="Google Картинки">🖼️</a></div>',
+            unsafe_allow_html=True,
+        )
+
+      with c_btn_yes:
+        is_yes = status == "yes" or status is None
+        if st.button("✔" if is_yes else "➕", key=f"yes_{global_idx}", use_container_width=True):
+          update_decision(global_idx, current_word, "yes")
+          st.rerun()
+
+      st.markdown("</div>", unsafe_allow_html=True)
 
   st.markdown("---")
 
