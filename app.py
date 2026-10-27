@@ -109,7 +109,7 @@ if "selected_level" not in st.session_state:
 if "user_decisions" not in st.session_state:
   st.session_state.user_decisions = load_shared_decisions()
 
-# --- CSS СТИЛІ ДЛЯ СТРОГОГО ОДНОГО РЯДКА ---
+# --- CSS СТИЛІ ДЛЯ ЖОРСТКОГО ЗБЕРЕЖЕННЯ ГОРИЗОНТАЛЬНОГО РЯДКА ---
 st.markdown("""
     <style>
     .main-title {
@@ -118,18 +118,29 @@ st.markdown("""
         text-align: center;
         margin-bottom: 20px;
     }
+    /* Забороняємо колонкам на ігровому екрані ламатися і ставати одна під одною */
+    div[data-testid="stHorizontalBlock"] {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+    }
+    div[data-testid="column"] {
+        flex: 1 1 auto !important;
+        min-width: 0px !important;
+    }
     div.stButton > button {
         width: 100% !important;
         border-radius: 6px !important;
-        padding: 4px 6px !important;
+        padding: 4px 2px !important;
         font-size: 14px !important;
+        min-height: 38px !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
 
 # ==========================================
-# ЕКРАН 1: ВИБІР МОВИ
+# ЕКРАН 1: ВИБІР МОВИ (Сітка по 3 в рядок)
 # ==========================================
 if st.session_state.step == "select_lang":
   st.markdown(
@@ -138,19 +149,23 @@ if st.session_state.step == "select_lang":
   )
   st.markdown("---")
 
-  cols = st.columns(3)
-  for i, lang in enumerate(LANGUAGES):
-    flag = LANG_FLAGS.get(lang, "📌")
-    with cols[i % 3]:
-      if st.button(
-          f"{flag} {lang.upper()}", use_container_width=True, key=f"l_{lang}"
-      ):
-        st.session_state.selected_lang = lang
-        st.session_state.step = "select_cat"
-        st.rerun()
+  lang_items = list(LANGUAGES)
+  for i in range(0, len(lang_items), 3):
+    cols = st.columns(3)
+    for j in range(3):
+      if i + j < len(lang_items):
+        lang = lang_items[i + j]
+        flag = LANG_FLAGS.get(lang, "📌")
+        with cols[j]:
+          if st.button(
+              f"{flag} {lang.upper()}", use_container_width=True, key=f"l_{lang}"
+          ):
+            st.session_state.selected_lang = lang
+            st.session_state.step = "select_cat"
+            st.rerun()
 
 # ==========================================
-# ЕКРАН 2: ВИБІР КАТЕГОРІЇ
+# ЕКРАН 2: ВИБІР КАТЕГОРІЇ (Сітка по 2 в рядок)
 # ==========================================
 elif st.session_state.step == "select_cat":
   lang = st.session_state.selected_lang
@@ -169,22 +184,25 @@ elif st.session_state.step == "select_cat":
 
   st.markdown("---")
 
-  cols = st.columns(2)
-  for i, cat in enumerate(CATEGORIES):
-    cat_words_foreign = dict_data.get(lang, {}).get(cat, [cat])
-    cat_name_foreign = cat_words_foreign[0] if cat_words_foreign else cat
+  for i in range(0, len(CATEGORIES), 2):
+    cols = st.columns(2)
+    for j in range(2):
+      if i + j < len(CATEGORIES):
+        cat = CATEGORIES[i + j]
+        cat_words_foreign = dict_data.get(lang, {}).get(cat, [cat])
+        cat_name_foreign = cat_words_foreign[0] if cat_words_foreign else cat
 
-    cat_words_uk = dict_data.get("uk", {}).get(cat, [cat])
-    cat_name_uk = cat_words_uk[0] if cat_words_uk else cat
+        cat_words_uk = dict_data.get("uk", {}).get(cat, [cat])
+        cat_name_uk = cat_words_uk[0] if cat_words_uk else cat
 
-    emoji_label = CAT_EMOJI.get(cat, "📁")
+        emoji_label = CAT_EMOJI.get(cat, "📁")
+        btn_label = f"{emoji_label}\n{cat_name_foreign}\n({cat_name_uk})"
 
-    with cols[i % 2]:
-      btn_label = f"{emoji_label}\n{cat_name_foreign}\n({cat_name_uk})"
-      if st.button(btn_label, use_container_width=True, key=f"c_{cat}"):
-        st.session_state.selected_cat = cat
-        st.session_state.step = "select_levels"
-        st.rerun()
+        with cols[j]:
+          if st.button(btn_label, use_container_width=True, key=f"c_{cat}"):
+            st.session_state.selected_cat = cat
+            st.session_state.step = "select_levels"
+            st.rerun()
 
 # ==========================================
 # ЕКРАН 3: СІТКА ВИБОРУ РІВНІВ (ПО 3 В РЯДОК)
@@ -207,41 +225,43 @@ elif st.session_state.step == "select_levels":
 
   st.markdown("---")
 
-  # Завантажуємо свіжий прогрес із загального файлу
   st.session_state.user_decisions = load_shared_decisions()
 
   cat_words = dict_data.get(lang, {}).get(cat, [cat])[1:]
   total_levels = max(1, (len(cat_words) + LEVEL_SIZE - 1) // LEVEL_SIZE)
+  levels_list = list(range(1, total_levels + 1))
 
-  # Створюємо сітку рівнів по 3 колонки в рядок
-  cols = st.columns(3)
-  for lvl in range(1, total_levels + 1):
-    start_idx = (lvl - 1) * LEVEL_SIZE
-    end_idx = min(start_idx + LEVEL_SIZE, len(cat_words))
-    lvl_words_count = end_idx - start_idx
+  for i in range(0, len(levels_list), 3):
+    cols = st.columns(3)
+    for j in range(3):
+      if i + j < len(levels_list):
+        lvl = levels_list[i + j]
+        start_idx = (lvl - 1) * LEVEL_SIZE
+        end_idx = min(start_idx + LEVEL_SIZE, len(cat_words))
+        lvl_words_count = end_idx - start_idx
 
-    passed_count = 0
-    decisions_dict = (
-        st.session_state.user_decisions.get(lang, {}).get(cat, {})
-    )
-    passed_count = sum(
-        1
-        for idx in range(start_idx, end_idx)
-        if str(idx) in decisions_dict
-        and decisions_dict[str(idx)].get("status") == "yes"
-    )
+        passed_count = 0
+        decisions_dict = (
+            st.session_state.user_decisions.get(lang, {}).get(cat, {})
+        )
+        passed_count = sum(
+            1
+            for idx in range(start_idx, end_idx)
+            if str(idx) in decisions_dict
+            and decisions_dict[str(idx)].get("status") == "yes"
+        )
 
-    badge = (
-        f" ✅ ({passed_count}/{lvl_words_count})" if passed_count > 0 else ""
-    )
+        badge = (
+            f" ✅ ({passed_count}/{lvl_words_count})" if passed_count > 0 else ""
+        )
 
-    with cols[(lvl - 1) % 3]:
-      if st.button(
-          f"Рівень {lvl}{badge}", use_container_width=True, key=f"lvl_{lvl}"
-      ):
-        st.session_state.selected_level = lvl
-        st.session_state.step = "gameplay"
-        st.rerun()
+        with cols[j]:
+          if st.button(
+              f"Рівень {lvl}{badge}", use_container_width=True, key=f"lvl_{lvl}"
+          ):
+            st.session_state.selected_level = lvl
+            st.session_state.step = "gameplay"
+            st.rerun()
 
 # ==========================================
 # ЕКРАН 4: ІГРОВИЙ ЕКРАН
@@ -301,7 +321,6 @@ elif st.session_state.step == "gameplay":
     save_shared_decisions(st.session_state.user_decisions)
 
 
-  # Виводимо слова у вигляді чітких компактних рядків
   for i, original_word in enumerate(level_words):
     global_idx = start_idx + i
     stored_data = cat_decisions.get(
@@ -321,44 +340,64 @@ elif st.session_state.step == "gameplay":
     )
     google_url = f"https://www.google.com/search?q={urllib.parse.quote(current_word)}&tbm=isch"
 
-    box_color = "#e6f4ea" if status == "yes" else ("#fce8e6" if status == "no" else "#f8f9fa")
+    box_color = (
+        "#e6f4ea"
+        if status == "yes"
+        else ("#fce8e6" if status == "no" else "#f8f9fa")
+    )
 
-    # Збираємо всі елементи рядка в єдиному горизонтальному блоці колонок без розривів
     with st.container():
       st.markdown(
-          f"<div style='background-color: {box_color}; padding: 6px 10px; border-radius: 8px; margin-bottom: 6px;'>",
+          f"<div style='background-color: {box_color}; padding: 6px 8px;"
+          " border-radius: 8px; margin-bottom: 6px;'>",
           unsafe_allow_html=True,
       )
 
-      c_btn_no, c_word, c_tr, c_img, c_btn_yes = st.columns([1, 4, 3, 1, 1])
+      # Зменшуємо пропорції колонок для ідеального вміщення на мобільних
+      c_btn_no, c_word, c_tr, c_img, c_btn_yes = st.columns(
+          [0.8, 3.5, 3, 0.8, 0.8]
+      )
 
       with c_btn_no:
         is_no = status == "no"
-        if st.button("❌" if is_no else "➖", key=f"no_{global_idx}", use_container_width=True):
+        if st.button(
+            "❌" if is_no else "➖",
+            key=f"no_{global_idx}",
+            use_container_width=True,
+        ):
           update_decision(global_idx, current_word, "no")
           st.rerun()
 
       with c_word:
         st.markdown(
-            f"<div style='padding-top: 6px; font-weight: 500; text-decoration: {text_decoration}; color: {text_color};'>{i+1}. <b>{current_word}</b></div>",
+            f"<div style='padding-top: 6px; font-weight: 500;"
+            f" text-decoration: {text_decoration}; color:"
+            f" {text_color};'>{i+1}. <b>{current_word}</b></div>",
             unsafe_allow_html=True,
         )
 
       with c_tr:
         st.markdown(
-            f"<div style='padding-top: 6px; color: {text_color}; text-decoration: {text_decoration};'>{uk_tr}</div>",
+            f"<div style='padding-top: 6px; color: {text_color};"
+            f" text-decoration: {text_decoration};'>{uk_tr}</div>",
             unsafe_allow_html=True,
         )
 
       with c_img:
         st.markdown(
-            f'<div style="padding-top: 6px;"><a href="{google_url}" target="_blank" style="text-decoration: none; font-size: 18px;" title="Google Картинки">🖼️</a></div>',
+            f'<div style="padding-top: 6px; text-align: center;"><a'
+            f' href="{google_url}" target="_blank" style="text-decoration:'
+            ' none; font-size: 16px;" title="Google Картинки">🖼️</a></div>',
             unsafe_allow_html=True,
         )
 
       with c_btn_yes:
         is_yes = status == "yes" or status is None
-        if st.button("✔" if is_yes else "➕", key=f"yes_{global_idx}", use_container_width=True):
+        if st.button(
+            "✔" if is_yes else "➕",
+            key=f"yes_{global_idx}",
+            use_container_width=True,
+        ):
           update_decision(global_idx, current_word, "yes")
           st.rerun()
 
@@ -440,7 +479,10 @@ elif st.session_state.step == "gameplay":
       ):
         for i in range(len(level_words)):
           g_idx = start_idx + i
-          if str(g_idx) not in cat_decisions or cat_decisions[str(g_idx)].get("status") is None:
+          if (
+              str(g_idx) not in cat_decisions
+              or cat_decisions[str(g_idx)].get("status") is None
+          ):
             update_decision(g_idx, level_words[i], "yes")
 
         st.session_state.selected_level = lvl + 1
