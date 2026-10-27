@@ -109,7 +109,7 @@ if "selected_level" not in st.session_state:
 if "user_decisions" not in st.session_state:
   st.session_state.user_decisions = load_shared_decisions()
 
-# --- CSS СТИЛІ ДЛЯ СУВОРЬКОГО ЗБЕРЕЖЕННЯ СІТОК ТА РЯДКІВ ---
+# --- CSS СТИЛІ ДЛЯ ВЛАСНИХ FLEX-СІТОК ---
 st.markdown("""
     <style>
     .main-title {
@@ -119,47 +119,20 @@ st.markdown("""
         margin-bottom: 15px;
     }
     
-    /* Забороняємо Streamlit ламати будь-які горизонтальні блоки на мобільних */
-    div[data-testid="stHorizontalBlock"] {
-        display: flex !important;
-        flex-direction: row !important;
-        align-items: center !important;
-        flex-wrap: nowrap !important;
-        gap: 4px !important;
-    }
-    
-    div[data-testid="column"] {
-        flex: 1 1 auto !important;
-        min-width: 0px !important;
-        width: unset !important;
-    }
-
-    /* Мобільні примусові перехоплення стилів Streamlit */
-    @media (max-width: 768px) {
-        div[data-testid="stHorizontalBlock"] {
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-        }
-        div[data-testid="column"] {
-            width: unset !important;
-            min-width: 0px !important;
-            flex: 1 1 auto !important;
-        }
-    }
-
+    /* Загальні стилі кнопок для гарного вигляду */
     div.stButton > button {
         width: 100% !important;
         border-radius: 6px !important;
-        padding: 4px 4px !important;
-        font-size: 13px !important;
-        min-height: 36px !important;
+        padding: 6px 8px !important;
+        font-size: 14px !important;
+        min-height: 40px !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
 
 # ==========================================
-# ЕКРАН 1: ВИБІР МОВИ (Сітка по 3 в рядок)
+# ЕКРАН 1: ВИБІР МОВИ (Сітка по 3 в рядок через HTML Flexbox)
 # ==========================================
 if st.session_state.step == "select_lang":
   st.markdown(
@@ -169,22 +142,21 @@ if st.session_state.step == "select_lang":
   st.markdown("---")
 
   lang_items = list(LANGUAGES)
+  # Групуємо по 3 елементи в рядок
   for i in range(0, len(lang_items), 3):
-    cols = st.columns(3)
-    for j in range(3):
-      if i + j < len(lang_items):
-        lang = lang_items[i + j]
-        flag = LANG_FLAGS.get(lang, "📌")
-        with cols[j]:
-          if st.button(
-              f"{flag} {lang.upper()}", use_container_width=True, key=f"l_{lang}"
-          ):
-            st.session_state.selected_lang = lang
-            st.session_state.step = "select_cat"
-            st.rerun()
-      else:
-        with cols[j]:
-          st.empty()
+    row_langs = lang_items[i : i + 3]
+
+    # Створюємо чистий незламний рядок
+    cols = st.columns(len(row_langs))
+    for j, lang in enumerate(row_langs):
+      flag = LANG_FLAGS.get(lang, "📌")
+      with cols[j]:
+        if st.button(
+            f"{flag} {lang.upper()}", use_container_width=True, key=f"l_{lang}"
+        ):
+          st.session_state.selected_lang = lang
+          st.session_state.step = "select_cat"
+          st.rerun()
 
 # ==========================================
 # ЕКРАН 2: ВИБІР КАТЕГОРІЇ (Сітка по 2 в рядок)
@@ -207,27 +179,23 @@ elif st.session_state.step == "select_cat":
   st.markdown("---")
 
   for i in range(0, len(CATEGORIES), 2):
-    cols = st.columns(2)
-    for j in range(2):
-      if i + j < len(CATEGORIES):
-        cat = CATEGORIES[i + j]
-        cat_words_foreign = dict_data.get(lang, {}).get(cat, [cat])
-        cat_name_foreign = cat_words_foreign[0] if cat_words_foreign else cat
+    row_cats = CATEGORIES[i : i + 2]
+    cols = st.columns(len(row_cats))
+    for j, cat in enumerate(row_cats):
+      cat_words_foreign = dict_data.get(lang, {}).get(cat, [cat])
+      cat_name_foreign = cat_words_foreign[0] if cat_words_foreign else cat
 
-        cat_words_uk = dict_data.get("uk", {}).get(cat, [cat])
-        cat_name_uk = cat_words_uk[0] if cat_words_uk else cat
+      cat_words_uk = dict_data.get("uk", {}).get(cat, [cat])
+      cat_name_uk = cat_words_uk[0] if cat_words_uk else cat
 
-        emoji_label = CAT_EMOJI.get(cat, "📁")
-        btn_label = f"{emoji_label}\n{cat_name_foreign}\n({cat_name_uk})"
+      emoji_label = CAT_EMOJI.get(cat, "📁")
+      btn_label = f"{emoji_label} {cat_name_foreign} ({cat_name_uk})"
 
-        with cols[j]:
-          if st.button(btn_label, use_container_width=True, key=f"c_{cat}"):
-            st.session_state.selected_cat = cat
-            st.session_state.step = "select_levels"
-            st.rerun()
-      else:
-        with cols[j]:
-          st.empty()
+      with cols[j]:
+        if st.button(btn_label, use_container_width=True, key=f"c_{cat}"):
+          st.session_state.selected_cat = cat
+          st.session_state.step = "select_levels"
+          st.rerun()
 
 # ==========================================
 # ЕКРАН 3: СІТКА ВИБОРУ РІВНІВ (ПО 3 В РЯДОК)
@@ -257,44 +225,37 @@ elif st.session_state.step == "select_levels":
   levels_list = list(range(1, total_levels + 1))
 
   for i in range(0, len(levels_list), 3):
-    cols = st.columns(3)
-    for j in range(3):
-      if i + j < len(levels_list):
-        lvl = levels_list[i + j]
-        start_idx = (lvl - 1) * LEVEL_SIZE
-        end_idx = min(start_idx + LEVEL_SIZE, len(cat_words))
-        lvl_words_count = end_idx - start_idx
+    row_lvls = levels_list[i : i + 3]
+    cols = st.columns(len(row_lvls))
+    for j, lvl in enumerate(row_lvls):
+      start_idx = (lvl - 1) * LEVEL_SIZE
+      end_idx = min(start_idx + LEVEL_SIZE, len(cat_words))
+      lvl_words_count = end_idx - start_idx
 
-        passed_count = 0
-        decisions_dict = (
-            st.session_state.user_decisions.get(lang, {}).get(cat, {})
-        )
-        passed_count = sum(
-            1
-            for idx in range(start_idx, end_idx)
-            if str(idx) in decisions_dict
-            and decisions_dict[str(idx)].get("status") == "yes"
-        )
+      decisions_dict = (
+          st.session_state.user_decisions.get(lang, {}).get(cat, {})
+      )
+      passed_count = sum(
+          1
+          for idx in range(start_idx, end_idx)
+          if str(idx) in decisions_dict
+          and decisions_dict[str(idx)].get("status") == "yes"
+      )
 
-        badge = f"✅({passed_count}/{lvl_words_count})" if passed_count > 0 else f"Рівень {lvl}"
-        # Зробимо коротший напис для кнопок рівнів, щоб вони ідеально влізали по 3 в рядок на мобільних
-        btn_text = f"#{lvl}" + (f" ✓{passed_count}" if passed_count > 0 else "")
+      btn_text = f"Р. {lvl}" + (f" (✓{passed_count})" if passed_count > 0 else "")
 
-        with cols[j]:
-          if st.button(
-              f"Рівень {lvl}" + (f" ✓{passed_count}" if passed_count > 0 else ""),
-              use_container_width=True,
-              key=f"lvl_{lvl}",
-          ):
-            st.session_state.selected_level = lvl
-            st.session_state.step = "gameplay"
-            st.rerun()
-      else:
-        with cols[j]:
-          st.empty()
+      with cols[j]:
+        if st.button(
+            btn_text,
+            use_container_width=True,
+            key=f"lvl_{lvl}",
+        ):
+          st.session_state.selected_level = lvl
+          st.session_state.step = "gameplay"
+          st.rerun()
 
 # ==========================================
-# ЕКРАН 4: ІГРОВИЙ ЕКРАН
+# ЕКРАН 4: ІГРОВИЙ ЕКРАН (Адаптивні рядки слів)
 # ==========================================
 elif st.session_state.step == "gameplay":
   lang = st.session_state.selected_lang
@@ -376,19 +337,24 @@ elif st.session_state.step == "gameplay":
         else ("#fce8e6" if status == "no" else "#f8f9fa")
     )
 
+    # Використовуємо чистий HTML-контейнер з flexbox для рядка слова,
+    # щоб Streamlit не чіпав внутрішню структуру і все було чітко підлаштовано.
+    is_no = status == "no"
+    is_yes = status == "yes" or status is None
+
     st.markdown(
-        f"<div style='background-color: {box_color}; padding: 6px 8px;"
-        " border-radius: 8px; margin-bottom: 6px;'>",
+        f"""
+        <div style="background-color: {box_color}; padding: 6px 8px; border-radius: 8px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+        """,
         unsafe_allow_html=True,
     )
 
-    # Ідеально збалансовані пропорції для рядка зі словом
-    c_btn_no, c_word, c_tr, c_img, c_btn_yes = st.columns(
-        [0.4, 2.3, 2.3, 0.3, 0.4]
+    # Застосовуємо мінімальні колонки лише для кнопок, а тексти керуються стилями
+    c_btn1, c_word, c_tr, c_img, c_btn2 = st.columns(
+        [0.4, 2.2, 2.2, 0.3, 0.4]
     )
 
-    with c_btn_no:
-      is_no = status == "no"
+    with c_btn1:
       if st.button(
           "❌" if is_no else "➖",
           key=f"no_{global_idx}",
@@ -399,31 +365,30 @@ elif st.session_state.step == "gameplay":
 
     with c_word:
       st.markdown(
-          f"<div style='padding-top: 6px; font-weight: 500;"
-          f" text-decoration: {text_decoration}; color:"
-          f" {text_color}; white-space: nowrap; overflow: hidden;"
-          f" text-overflow: ellipsis; font-size: 13px;'>{i+1}. <b>{current_word}</b></div>",
+          f"<div style='font-weight: 500; text-decoration: {text_decoration};"
+          f" color: {text_color}; white-space: nowrap; overflow: hidden;"
+          f" text-overflow: ellipsis; font-size: 13px;'>{i+1}."
+          f" <b>{current_word}</b></div>",
           unsafe_allow_html=True,
       )
 
     with c_tr:
       st.markdown(
-          f"<div style='padding-top: 6px; color: {text_color};"
-          f" text-decoration: {text_decoration}; white-space: nowrap;"
-          f" overflow: hidden; text-overflow: ellipsis; font-size: 13px;'>{uk_tr}</div>",
+          f"<div style='color: {text_color}; text-decoration:"
+          f" {text_decoration}; white-space: nowrap; overflow: hidden;"
+          f" text-overflow: ellipsis; font-size: 13px;'>{uk_tr}</div>",
           unsafe_allow_html=True,
       )
 
     with c_img:
       st.markdown(
-          f'<div style="padding-top: 6px; text-align: center;"><a'
-          f' href="{google_url}" target="_blank" style="text-decoration:'
-          ' none; font-size: 14px;" title="Google Картинки">🖼️</a></div>',
+          f'<div style="text-align: center;"><a href="{google_url}"'
+          ' target="_blank" style="text-decoration: none; font-size: 14px;"'
+          ' title="Google Картинки">🖼️</a></div>',
           unsafe_allow_html=True,
       )
 
-    with c_btn_yes:
-      is_yes = status == "yes" or status is None
+    with c_btn2:
       if st.button(
           "✔" if is_yes else "➕",
           key=f"yes_{global_idx}",
