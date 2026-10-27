@@ -106,11 +106,10 @@ if "selected_cat" not in st.session_state:
 if "selected_level" not in st.session_state:
   st.session_state.selected_level = None
 
-# Завантажуємо збережений прогрес
 if "user_decisions" not in st.session_state:
   st.session_state.user_decisions = load_shared_decisions()
 
-# --- CSS СТИЛІ ДЛЯ АКУРАТНИХ КНОПОК ТА ФОНУ ---
+# --- CSS СТИЛІ ДЛЯ СТРОГОГО ОДНОГО РЯДКА ---
 st.markdown("""
     <style>
     .main-title {
@@ -182,13 +181,13 @@ elif st.session_state.step == "select_cat":
 
     with cols[i % 2]:
       btn_label = f"{emoji_label}\n{cat_name_foreign}\n({cat_name_uk})"
-      if st.button(btn_label, use_container_width=True, key=f"c_{cat}"):
+      if st.button(btn_label, use_container_width=True, key=f"c_{cat}„):
         st.session_state.selected_cat = cat
         st.session_state.step = "select_levels"
         st.rerun()
 
 # ==========================================
-# ЕКРАН 3: СІТКА ВИБОРУ РІВНІВ
+# ЕКРАН 3: СІТКА ВИБОРУ РІВНІВ (ПО 3 В РЯДОК)
 # ==========================================
 elif st.session_state.step == "select_levels":
   lang = st.session_state.selected_lang
@@ -208,12 +207,13 @@ elif st.session_state.step == "select_levels":
 
   st.markdown("---")
 
-  # Оновлюємо дані з файлу перед виведенням рівня
+  # Завантажуємо свіжий прогрес із загального файлу
   st.session_state.user_decisions = load_shared_decisions()
 
   cat_words = dict_data.get(lang, {}).get(cat, [cat])[1:]
   total_levels = max(1, (len(cat_words) + LEVEL_SIZE - 1) // LEVEL_SIZE)
 
+  # Створюємо сітку рівнів по 3 колонки в рядок
   cols = st.columns(3)
   for lvl in range(1, total_levels + 1):
     start_idx = (lvl - 1) * LEVEL_SIZE
@@ -251,7 +251,6 @@ elif st.session_state.step == "gameplay":
   cat = st.session_state.selected_cat
   lvl = st.session_state.selected_level
 
-  # Завантажуємо актуальний прогрес із файлу
   st.session_state.user_decisions = load_shared_decisions()
 
   full_list = dict_data.get(lang, {}).get(cat, [cat])
@@ -302,7 +301,7 @@ elif st.session_state.step == "gameplay":
     save_shared_decisions(st.session_state.user_decisions)
 
 
-  # Виводимо слова у вигляді зручних рядків
+  # Виводимо слова у вигляді чітких компактних рядків
   for i, original_word in enumerate(level_words):
     global_idx = start_idx + i
     stored_data = cat_decisions.get(
@@ -311,7 +310,6 @@ elif st.session_state.step == "gameplay":
     current_word = stored_data["word"]
     status = stored_data["status"]
 
-    # Визначаємо стиль оформлення
     text_decoration = "none"
     text_color = "inherit"
     if status == "no":
@@ -323,12 +321,12 @@ elif st.session_state.step == "gameplay":
     )
     google_url = f"https://www.google.com/search?q={urllib.parse.quote(current_word)}&tbm=isch"
 
-    # Використовуємо container з кольором фону залежно від статусу
     box_color = "#e6f4ea" if status == "yes" else ("#fce8e6" if status == "no" else "#f8f9fa")
 
+    # Збираємо всі елементи рядка в єдиному горизонтальному блоці колонок без розривів
     with st.container():
       st.markdown(
-          f"<div style='background-color: {box_color}; padding: 8px 12px; border-radius: 8px; margin-bottom: 6px;'>",
+          f"<div style='background-color: {box_color}; padding: 6px 10px; border-radius: 8px; margin-bottom: 6px;'>",
           unsafe_allow_html=True,
       )
 
@@ -440,7 +438,6 @@ elif st.session_state.step == "gameplay":
       if st.button(
           "Наступний рівень ❯", use_container_width=True, type="primary"
       ):
-        # Автоматично схвалюємо всі нерозмічені слова поточного рівня
         for i in range(len(level_words)):
           g_idx = start_idx + i
           if str(g_idx) not in cat_decisions or cat_decisions[str(g_idx)].get("status") is None:
