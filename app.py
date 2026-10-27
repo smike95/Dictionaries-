@@ -109,6 +109,7 @@ if "selected_level" not in st.session_state:
 if "user_decisions" not in st.session_state:
   st.session_state.user_decisions = load_shared_decisions()
 
+# --- CSS СТИЛІ ДЛЯ ГНУЧКОГО ГОРИЗОНТАЛЬНОГО РЯДКА ---
 st.markdown("""
     <style>
     .main-title {
@@ -118,22 +119,20 @@ st.markdown("""
         margin-bottom: 20px;
     }
     
-    /* Робимо горизонтальні блоки гнучкими і забороняємо перенос */
+    /* Забороняємо колонкам ламатися і ставати одна під одною */
     div[data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-direction: row !important;
         align-items: center !important;
         flex-wrap: nowrap !important;
-        gap: 4px !important;
+        gap: 2px !important;
     }
-
-    /* Дозволяємо колонкам підлаштовуватися під контент */
     div[data-testid="column"] {
         flex: 1 1 auto !important;
         min-width: 0px !important;
     }
 
-    /* Для мобільних: фіксуємо рядок і прибираємо примусові 100 смуги */
+    /* Адаптація для мобільних екранів */
     @media (max-width: 768px) {
         div[data-testid="stHorizontalBlock"] {
             flex-direction: row !important;
@@ -144,15 +143,16 @@ st.markdown("""
             min-width: 0px !important;
         }
         div.stButton > button {
-            padding: 2px 4px !important;
+            padding: 2px 2px !important;
             font-size: 12px !important;
             min-height: 34px !important;
         }
     }
 
     div.stButton > button {
+        width: 100% !important;
         border-radius: 6px !important;
-        padding: 4px 6px !important;
+        padding: 4px 2px !important;
         font-size: 14px !important;
         min-height: 38px !important;
     }
@@ -367,62 +367,63 @@ elif st.session_state.step == "gameplay":
         else ("#fce8e6" if status == "no" else "#f8f9fa")
     )
 
-    with st.container():
+    st.markdown(
+        f"<div style='background-color: {box_color}; padding: 6px 8px;"
+        " border-radius: 8px; margin-bottom: 6px;'>",
+        unsafe_allow_html=True,
+    )
+
+    # Збалансовані пропорції для гнучкого автодопасування змісту
+    c_btn_no, c_word, c_tr, c_img, c_btn_yes = st.columns(
+        [0.4, 2.3, 2.3, 0.4, 0.4]
+    )
+
+    with c_btn_no:
+      is_no = status == "no"
+      if st.button(
+          "❌" if is_no else "➖",
+          key=f"no_{global_idx}",
+          use_container_width=True,
+      ):
+        update_decision(global_idx, current_word, "no")
+        st.rerun()
+
+    with c_word:
       st.markdown(
-          f"<div style='background-color: {box_color}; padding: 6px 8px;"
-          " border-radius: 8px; margin-bottom: 6px;'>",
+          f"<div style='padding-top: 6px; font-weight: 500;"
+          f" text-decoration: {text_decoration}; color:"
+          f" {text_color}; white-space: nowrap; overflow: hidden;"
+          f" text-overflow: ellipsis;'>{i+1}. <b>{current_word}</b></div>",
           unsafe_allow_html=True,
       )
 
-      # Зменшуємо пропорції колонок для ідеального вміщення на мобільних
-      c_btn_no, c_word, c_tr, c_img, c_btn_yes = st.columns(
-          [0.8, 3.5, 3, 0.8, 0.8]
+    with c_tr:
+      st.markdown(
+          f"<div style='padding-top: 6px; color: {text_color};"
+          f" text-decoration: {text_decoration}; white-space: nowrap;"
+          f" overflow: hidden; text-overflow: ellipsis;'>{uk_tr}</div>",
+          unsafe_allow_html=True,
       )
 
-      with c_btn_no:
-        is_no = status == "no"
-        if st.button(
-            "❌" if is_no else "➖",
-            key=f"no_{global_idx}",
-            use_container_width=True,
-        ):
-          update_decision(global_idx, current_word, "no")
-          st.rerun()
+    with c_img:
+      st.markdown(
+          f'<div style="padding-top: 6px; text-align: center;"><a'
+          f' href="{google_url}" target="_blank" style="text-decoration:'
+          ' none; font-size: 16px;" title="Google Картинки">🖼️</a></div>',
+          unsafe_allow_html=True,
+      )
 
-      with c_word:
-        st.markdown(
-            f"<div style='padding-top: 6px; font-weight: 500;"
-            f" text-decoration: {text_decoration}; color:"
-            f" {text_color};'>{i+1}. <b>{current_word}</b></div>",
-            unsafe_allow_html=True,
-        )
+    with c_btn_yes:
+      is_yes = status == "yes" or status is None
+      if st.button(
+          "✔" if is_yes else "➕",
+          key=f"yes_{global_idx}",
+          use_container_width=True,
+      ):
+        update_decision(global_idx, current_word, "yes")
+        st.rerun()
 
-      with c_tr:
-        st.markdown(
-            f"<div style='padding-top: 6px; color: {text_color};"
-            f" text-decoration: {text_decoration};'>{uk_tr}</div>",
-            unsafe_allow_html=True,
-        )
-
-      with c_img:
-        st.markdown(
-            f'<div style="padding-top: 6px; text-align: center;"><a'
-            f' href="{google_url}" target="_blank" style="text-decoration:'
-            ' none; font-size: 16px;" title="Google Картинки">🖼️</a></div>',
-            unsafe_allow_html=True,
-        )
-
-      with c_btn_yes:
-        is_yes = status == "yes" or status is None
-        if st.button(
-            "✔" if is_yes else "➕",
-            key=f"yes_{global_idx}",
-            use_container_width=True,
-        ):
-          update_decision(global_idx, current_word, "yes")
-          st.rerun()
-
-      st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
   st.markdown("---")
 
