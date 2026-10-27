@@ -109,7 +109,7 @@ if "selected_level" not in st.session_state:
 if "user_decisions" not in st.session_state:
   st.session_state.user_decisions = load_shared_decisions()
 
-# --- CSS СТИЛІ ДЛЯ ВЛАСНИХ FLEX-СІТОК ---
+# --- CSS СТИЛІ ДЛЯ НЕЗЛАМНИХ FLEX-КОНТЕЙНЕРІВ ---
 st.markdown("""
     <style>
     .main-title {
@@ -119,12 +119,40 @@ st.markdown("""
         margin-bottom: 15px;
     }
     
-    /* Загальні стилі кнопок для гарного вигляду */
+    /* Унікальний клас для сіток по 3 в рядок (мова, рівні) */
+    .grid-3 {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: 6px !important;
+        margin-bottom: 6px !important;
+        width: 100% !important;
+    }
+    .grid-3 > div {
+        flex: 1 1 0% !important;
+        min-width: 0 !important;
+    }
+
+    /* Унікальний клас для сітки по 2 в рядок (категорії) */
+    .grid-2 {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: 8px !important;
+        margin-bottom: 8px !important;
+        width: 100% !important;
+    }
+    .grid-2 > div {
+        flex: 1 1 0% !important;
+        min-width: 0 !important;
+    }
+
+    /* Кнопки всередині сіток */
     div.stButton > button {
         width: 100% !important;
         border-radius: 6px !important;
-        padding: 6px 8px !important;
-        font-size: 14px !important;
+        padding: 6px 4px !important;
+        font-size: 13px !important;
         min-height: 40px !important;
     }
     </style>
@@ -132,7 +160,7 @@ st.markdown("""
 
 
 # ==========================================
-# ЕКРАН 1: ВИБІР МОВИ (Сітка по 3 в рядок через HTML Flexbox)
+# ЕКРАН 1: ВИБІР МОВИ (Сітка по 3 в рядок)
 # ==========================================
 if st.session_state.step == "select_lang":
   st.markdown(
@@ -142,11 +170,9 @@ if st.session_state.step == "select_lang":
   st.markdown("---")
 
   lang_items = list(LANGUAGES)
-  # Групуємо по 3 елементи в рядок
   for i in range(0, len(lang_items), 3):
     row_langs = lang_items[i : i + 3]
-
-    # Створюємо чистий незламний рядок
+    st.markdown('<div class="grid-3">', unsafe_allow_html=True)
     cols = st.columns(len(row_langs))
     for j, lang in enumerate(row_langs):
       flag = LANG_FLAGS.get(lang, "📌")
@@ -157,6 +183,11 @@ if st.session_state.step == "select_lang":
           st.session_state.selected_lang = lang
           st.session_state.step = "select_cat"
           st.rerun()
+    # Доповнюємо порожніми блоками якщо в останньому рядку менше 3 елементів
+    for _ in range(3 - len(row_langs)):
+      with cols[-1]:
+        pass
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # ==========================================
 # ЕКРАН 2: ВИБІР КАТЕГОРІЇ (Сітка по 2 в рядок)
@@ -180,6 +211,7 @@ elif st.session_state.step == "select_cat":
 
   for i in range(0, len(CATEGORIES), 2):
     row_cats = CATEGORIES[i : i + 2]
+    st.markdown('<div class="grid-2">', unsafe_allow_html=True)
     cols = st.columns(len(row_cats))
     for j, cat in enumerate(row_cats):
       cat_words_foreign = dict_data.get(lang, {}).get(cat, [cat])
@@ -196,6 +228,7 @@ elif st.session_state.step == "select_cat":
           st.session_state.selected_cat = cat
           st.session_state.step = "select_levels"
           st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # ==========================================
 # ЕКРАН 3: СІТКА ВИБОРУ РІВНІВ (ПО 3 В РЯДОК)
@@ -226,6 +259,7 @@ elif st.session_state.step == "select_levels":
 
   for i in range(0, len(levels_list), 3):
     row_lvls = levels_list[i : i + 3]
+    st.markdown('<div class="grid-3">', unsafe_allow_html=True)
     cols = st.columns(len(row_lvls))
     for j, lvl in enumerate(row_lvls):
       start_idx = (lvl - 1) * LEVEL_SIZE
@@ -253,9 +287,13 @@ elif st.session_state.step == "select_levels":
           st.session_state.selected_level = lvl
           st.session_state.step = "gameplay"
           st.rerun()
+    # Заповнюємо порожні слоти для останнього неповного рядка
+    for _ in range(3 - len(row_lvls)):
+      pass
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # ==========================================
-# ЕКРАН 4: ІГРОВИЙ ЕКРАН (Адаптивні рядки слів)
+# ЕКРАН 4: ІГРОВИЙ ЕКРАН
 # ==========================================
 elif st.session_state.step == "gameplay":
   lang = st.session_state.selected_lang
@@ -337,19 +375,16 @@ elif st.session_state.step == "gameplay":
         else ("#fce8e6" if status == "no" else "#f8f9fa")
     )
 
-    # Використовуємо чистий HTML-контейнер з flexbox для рядка слова,
-    # щоб Streamlit не чіпав внутрішню структуру і все було чітко підлаштовано.
     is_no = status == "no"
     is_yes = status == "yes" or status is None
 
     st.markdown(
         f"""
-        <div style="background-color: {box_color}; padding: 6px 8px; border-radius: 8px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+        <div style="background-color: {box_color}; padding: 6px 8px; border-radius: 8px; margin-bottom: 6px;">
         """,
         unsafe_allow_html=True,
     )
 
-    # Застосовуємо мінімальні колонки лише для кнопок, а тексти керуються стилями
     c_btn1, c_word, c_tr, c_img, c_btn2 = st.columns(
         [0.4, 2.2, 2.2, 0.3, 0.4]
     )
