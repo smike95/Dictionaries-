@@ -109,7 +109,6 @@ if "selected_level" not in st.session_state:
 if "user_decisions" not in st.session_state:
   st.session_state.user_decisions = load_shared_decisions()
 
-# --- CSS СТИЛІ ДЛЯ ЖОРСТКОГО ЗБЕРЕЖЕННЯ ГОРИЗОНТАЛЬНОГО РЯДКА ---
 st.markdown("""
     <style>
     .main-title {
@@ -119,19 +118,22 @@ st.markdown("""
         margin-bottom: 20px;
     }
     
-    /* Загальні правила для рядків та колонок */
+    /* Робимо горизонтальні блоки гнучкими і забороняємо перенос */
     div[data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-direction: row !important;
         align-items: center !important;
         flex-wrap: nowrap !important;
+        gap: 4px !important;
     }
+
+    /* Дозволяємо колонкам підлаштовуватися під контент */
     div[data-testid="column"] {
         flex: 1 1 auto !important;
         min-width: 0px !important;
     }
 
-    /* Примусово забороняємо Streamlit ламати колонки в стовпчик на мобільних екранах */
+    /* Для мобільних: фіксуємо рядок і прибираємо примусові 100 смуги */
     @media (max-width: 768px) {
         div[data-testid="stHorizontalBlock"] {
             flex-direction: row !important;
@@ -139,26 +141,24 @@ st.markdown("""
         }
         div[data-testid="column"] {
             width: unset !important;
-            flex: 1 1 auto !important;
             min-width: 0px !important;
         }
-        /* Робимо кнопки та текст трохи компактнішими на дуже маленьких екранах */
         div.stButton > button {
-            padding: 2px 1px !important;
-            font-size: 13px !important;
-            min-height: 36px !important;
+            padding: 2px 4px !important;
+            font-size: 12px !important;
+            min-height: 34px !important;
         }
     }
 
     div.stButton > button {
-        width: 100% !important;
         border-radius: 6px !important;
-        padding: 4px 2px !important;
+        padding: 4px 6px !important;
         font-size: 14px !important;
         min-height: 38px !important;
     }
     </style>
 """, unsafe_allow_html=True)
+
 
 # ==========================================
 # ЕКРАН 1: ВИБІР МОВИ (Сітка по 3 в рядок)
