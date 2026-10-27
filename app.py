@@ -109,7 +109,7 @@ if "selected_level" not in st.session_state:
 if "user_decisions" not in st.session_state:
   st.session_state.user_decisions = load_shared_decisions()
 
-# --- CSS СТИЛІ ДЛЯ ГНУЧКОГО ГОРИЗОНТАЛЬНОГО РЯДКА ---
+# --- CSS СТИЛІ ДЛЯ ОПТИМІЗАЦІЇ ШИРИНИ ТА КНОПОК ---
 st.markdown("""
     <style>
     .main-title {
@@ -119,20 +119,21 @@ st.markdown("""
         margin-bottom: 20px;
     }
     
-    /* Забороняємо колонкам ламатися і ставати одна під одною */
+    /* Жорстко забороняємо перенесення елементів у рядку слів */
     div[data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-direction: row !important;
         align-items: center !important;
         flex-wrap: nowrap !important;
-        gap: 2px !important;
+        gap: 4px !important;
     }
+    
     div[data-testid="column"] {
         flex: 1 1 auto !important;
         min-width: 0px !important;
     }
 
-    /* Адаптація для мобільних екранів */
+    /* Мобільні оптимізації */
     @media (max-width: 768px) {
         div[data-testid="stHorizontalBlock"] {
             flex-direction: row !important;
@@ -142,17 +143,13 @@ st.markdown("""
             width: unset !important;
             min-width: 0px !important;
         }
-        div.stButton > button {
-            padding: 2px 2px !important;
-            font-size: 12px !important;
-            min-height: 34px !important;
-        }
     }
 
+    /* Загальний стиль для звичайних кнопкових сіток (мова, категорії, рівні) */
     div.stButton > button {
         width: 100% !important;
         border-radius: 6px !important;
-        padding: 4px 2px !important;
+        padding: 4px 6px !important;
         font-size: 14px !important;
         min-height: 38px !important;
     }
@@ -373,9 +370,9 @@ elif st.session_state.step == "gameplay":
         unsafe_allow_html=True,
     )
 
-    # Збалансовані пропорції для гнучкого автодопасування змісту
+    # Збалансовані пропорції без зайвої розтягнутості кнопок
     c_btn_no, c_word, c_tr, c_img, c_btn_yes = st.columns(
-        [0.4, 2.3, 2.3, 0.4, 0.4]
+        [0.4, 2.3, 2.3, 0.3, 0.4]
     )
 
     with c_btn_no:
@@ -409,7 +406,7 @@ elif st.session_state.step == "gameplay":
       st.markdown(
           f'<div style="padding-top: 6px; text-align: center;"><a'
           f' href="{google_url}" target="_blank" style="text-decoration:'
-          ' none; font-size: 16px;" title="Google Картинки">🖼️</a></div>',
+          ' none; font-size: 15px;" title="Google Картинки">🖼️</a></div>',
           unsafe_allow_html=True,
       )
 
