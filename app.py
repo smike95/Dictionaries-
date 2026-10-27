@@ -118,16 +118,38 @@ st.markdown("""
         text-align: center;
         margin-bottom: 20px;
     }
-    /* Забороняємо колонкам на ігровому екрані ламатися і ставати одна під одною */
+    
+    /* Загальні правила для рядків та колонок */
     div[data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-direction: row !important;
         align-items: center !important;
+        flex-wrap: nowrap !important;
     }
     div[data-testid="column"] {
         flex: 1 1 auto !important;
         min-width: 0px !important;
     }
+
+    /* Примусово забороняємо Streamlit ламати колонки в стовпчик на мобільних екранах */
+    @media (max-width: 768px) {
+        div[data-testid="stHorizontalBlock"] {
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+        }
+        div[data-testid="column"] {
+            width: unset !important;
+            flex: 1 1 auto !important;
+            min-width: 0px !important;
+        }
+        /* Робимо кнопки та текст трохи компактнішими на дуже маленьких екранах */
+        div.stButton > button {
+            padding: 2px 1px !important;
+            font-size: 13px !important;
+            min-height: 36px !important;
+        }
+    }
+
     div.stButton > button {
         width: 100% !important;
         border-radius: 6px !important;
@@ -137,7 +159,6 @@ st.markdown("""
     }
     </style>
 """, unsafe_allow_html=True)
-
 
 # ==========================================
 # ЕКРАН 1: ВИБІР МОВИ (Сітка по 3 в рядок)
