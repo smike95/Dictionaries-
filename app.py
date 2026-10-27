@@ -109,17 +109,17 @@ if "selected_level" not in st.session_state:
 if "user_decisions" not in st.session_state:
   st.session_state.user_decisions = load_shared_decisions()
 
-# --- CSS СТИЛІ ДЛЯ ОПТИМІЗАЦІЇ ШИРИНИ ТА КНОПОК ---
+# --- CSS СТИЛІ ДЛЯ СУВОРЬКОГО ЗБЕРЕЖЕННЯ СІТОК ТА РЯДКІВ ---
 st.markdown("""
     <style>
     .main-title {
-        font-size: 26px;
+        font-size: 24px;
         font-weight: bold;
         text-align: center;
-        margin-bottom: 20px;
+        margin-bottom: 15px;
     }
     
-    /* Жорстко забороняємо перенесення елементів у рядку слів */
+    /* Забороняємо Streamlit ламати будь-які горизонтальні блоки на мобільних */
     div[data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-direction: row !important;
@@ -131,9 +131,10 @@ st.markdown("""
     div[data-testid="column"] {
         flex: 1 1 auto !important;
         min-width: 0px !important;
+        width: unset !important;
     }
 
-    /* Мобільні оптимізації */
+    /* Мобільні примусові перехоплення стилів Streamlit */
     @media (max-width: 768px) {
         div[data-testid="stHorizontalBlock"] {
             flex-direction: row !important;
@@ -142,16 +143,16 @@ st.markdown("""
         div[data-testid="column"] {
             width: unset !important;
             min-width: 0px !important;
+            flex: 1 1 auto !important;
         }
     }
 
-    /* Загальний стиль для звичайних кнопкових сіток (мова, категорії, рівні) */
     div.stButton > button {
         width: 100% !important;
         border-radius: 6px !important;
-        padding: 4px 6px !important;
-        font-size: 14px !important;
-        min-height: 38px !important;
+        padding: 4px 4px !important;
+        font-size: 13px !important;
+        min-height: 36px !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -181,6 +182,9 @@ if st.session_state.step == "select_lang":
             st.session_state.selected_lang = lang
             st.session_state.step = "select_cat"
             st.rerun()
+      else:
+        with cols[j]:
+          st.empty()
 
 # ==========================================
 # ЕКРАН 2: ВИБІР КАТЕГОРІЇ (Сітка по 2 в рядок)
@@ -221,6 +225,9 @@ elif st.session_state.step == "select_cat":
             st.session_state.selected_cat = cat
             st.session_state.step = "select_levels"
             st.rerun()
+      else:
+        with cols[j]:
+          st.empty()
 
 # ==========================================
 # ЕКРАН 3: СІТКА ВИБОРУ РІВНІВ (ПО 3 В РЯДОК)
@@ -269,17 +276,22 @@ elif st.session_state.step == "select_levels":
             and decisions_dict[str(idx)].get("status") == "yes"
         )
 
-        badge = (
-            f" ✅ ({passed_count}/{lvl_words_count})" if passed_count > 0 else ""
-        )
+        badge = f"✅({passed_count}/{lvl_words_count})" if passed_count > 0 else f"Рівень {lvl}"
+        # Зробимо коротший напис для кнопок рівнів, щоб вони ідеально влізали по 3 в рядок на мобільних
+        btn_text = f"#{lvl}" + (f" ✓{passed_count}" if passed_count > 0 else "")
 
         with cols[j]:
           if st.button(
-              f"Рівень {lvl}{badge}", use_container_width=True, key=f"lvl_{lvl}"
+              f"Рівень {lvl}" + (f" ✓{passed_count}" if passed_count > 0 else ""),
+              use_container_width=True,
+              key=f"lvl_{lvl}",
           ):
             st.session_state.selected_level = lvl
             st.session_state.step = "gameplay"
             st.rerun()
+      else:
+        with cols[j]:
+          st.empty()
 
 # ==========================================
 # ЕКРАН 4: ІГРОВИЙ ЕКРАН
@@ -370,7 +382,7 @@ elif st.session_state.step == "gameplay":
         unsafe_allow_html=True,
     )
 
-    # Збалансовані пропорції без зайвої розтягнутості кнопок
+    # Ідеально збалансовані пропорції для рядка зі словом
     c_btn_no, c_word, c_tr, c_img, c_btn_yes = st.columns(
         [0.4, 2.3, 2.3, 0.3, 0.4]
     )
@@ -390,7 +402,7 @@ elif st.session_state.step == "gameplay":
           f"<div style='padding-top: 6px; font-weight: 500;"
           f" text-decoration: {text_decoration}; color:"
           f" {text_color}; white-space: nowrap; overflow: hidden;"
-          f" text-overflow: ellipsis;'>{i+1}. <b>{current_word}</b></div>",
+          f" text-overflow: ellipsis; font-size: 13px;'>{i+1}. <b>{current_word}</b></div>",
           unsafe_allow_html=True,
       )
 
@@ -398,7 +410,7 @@ elif st.session_state.step == "gameplay":
       st.markdown(
           f"<div style='padding-top: 6px; color: {text_color};"
           f" text-decoration: {text_decoration}; white-space: nowrap;"
-          f" overflow: hidden; text-overflow: ellipsis;'>{uk_tr}</div>",
+          f" overflow: hidden; text-overflow: ellipsis; font-size: 13px;'>{uk_tr}</div>",
           unsafe_allow_html=True,
       )
 
@@ -406,7 +418,7 @@ elif st.session_state.step == "gameplay":
       st.markdown(
           f'<div style="padding-top: 6px; text-align: center;"><a'
           f' href="{google_url}" target="_blank" style="text-decoration:'
-          ' none; font-size: 15px;" title="Google Картинки">🖼️</a></div>',
+          ' none; font-size: 14px;" title="Google Картинки">🖼️</a></div>',
           unsafe_allow_html=True,
       )
 
